@@ -138,7 +138,7 @@ void ray_tracing_gpu(OpenCL& opencl) {
 
     float camera_origin[4] = {13.f,2.f,3.f, 0};
     float camera_move_direction[4] = {0.f,0.f,0.1f, 0};
-    float camera_ll_corner[4] = {2.02374f,-1.22628f,3.4122f, 0};
+    float camera_ll_corner[4] = {5.02374f,-1.22628f,3.4122f, 0};
     float camera_horizontal[4] = {1.18946f,0.f,-5.15434f, 0};
     float camera_vertical[4] = {-0.509421f,3.48757f,-0.117559f, 0};
 
