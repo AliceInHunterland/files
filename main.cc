@@ -193,7 +193,7 @@ void ray_tracing_gpu(OpenCL& opencl) {
     for (int time_step=1; time_step<=max_time_step; ++time_step) {
         auto t0 = clock_type::now();
 
-        opencl.queue.enqueueNDRangeKernel(kernel, cl::NullRange, cl::NDRange(1), cl::NullRange);
+        opencl.queue.enqueueNDRangeKernel(kernel, cl::NullRange, cl::NDRange(ny, nx), cl::NullRange);
         opencl.queue.flush();
 
         opencl.queue.enqueueReadBuffer(d_result, true, 0, 3*nx*ny*sizeof(float), (float*)(pixels.pixels().data()));
@@ -214,9 +214,10 @@ void ray_tracing_gpu(OpenCL& opencl) {
         camera.move(vec{0.f,0.f,0.1f});
     }
 
-    std::clog << "Ray-tracing time: " << duration_cast<seconds>(total_time).count()
-           << "s" << std::endl;
-       std::clog << "Movie time: " << max_time_step/60.f << "s" << std::endl;
+    int total_time_ms = duration_cast<milliseconds>(total_time).count();
+    std::clog << "Ray-tracing time: " << total_time_ms/1000 << "." << total_time_ms%1000
+        << "s." << std::endl;
+    std::clog << "Movie time: " << max_time_step/60.f << "s." << std::endl;
 }
 
 const std::string kernelsmykernels = R"(
@@ -417,3 +418,4 @@ int main(int argc, char* argv[]) {
     }
     return 0;
 }
+
