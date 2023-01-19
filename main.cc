@@ -136,11 +136,11 @@ void ray_tracing_gpu(OpenCL& opencl) {
     const int max_time_step = 60;
     print_column_names("OpenCL");
 
-    float camera_origin[4] = {10.f,20.f,3.f, 0};
+    float camera_origin[4] = {13.f,2.f,3.f, 0};
     float camera_move_direction[4] = {0.f,0.f,0.1f, 0};
-    float camera_ll_corner[4] = {3.f,-1.f,3.f, 0};
-    float camera_horizontal[4] = {1.f,0.f,-5.f, 0};
-    float camera_vertical[4] = {-0.f,3.f,-0.f, 0};
+    float camera_ll_corner[4] = {3.02374f,-1.22628f,3.4122f, 0};
+    float camera_horizontal[4] = {1.18946f,0.f,-5.15434f, 0};
+    float camera_vertical[4] = {-0.509421f,3.48757f,-0.117559f, 0};
 
     std::vector<float> objects_vec;
     for (int i = 0; i < objects.size(); i++) {
@@ -161,9 +161,7 @@ void ray_tracing_gpu(OpenCL& opencl) {
     std::normal_distribution<float> dist(0.f,1.f);
     int distr_size = 1<<24;
     std::vector<float> distr;
-    //distr.reserve(distr_size);
-
-    //#pragma omp parallel for
+    
     for (int i = 0; i < distr_size; i++) {
         distr.push_back(dist(prng));
     }
@@ -195,7 +193,7 @@ void ray_tracing_gpu(OpenCL& opencl) {
     for (int time_step=1; time_step<=max_time_step; ++time_step) {
         auto t0 = clock_type::now();
 
-        opencl.queue.enqueueNDRangeKernel(kernel, cl::NullRange, cl::NDRange(ny, nx), cl::NullRange);
+        opencl.queue.enqueueNDRangeKernel(kernel, cl::NullRange, cl::NDRange(1), cl::NullRange);
         opencl.queue.flush();
 
         opencl.queue.enqueueReadBuffer(d_result, true, 0, 3*nx*ny*sizeof(float), (float*)(pixels.pixels().data()));
@@ -216,10 +214,9 @@ void ray_tracing_gpu(OpenCL& opencl) {
         camera.move(vec{0.f,0.f,0.1f});
     }
 
-    int total_time_ms = duration_cast<milliseconds>(total_time).count();
-    std::clog << "Ray-tracing time: " << total_time_ms/1000 << "." << total_time_ms%1000
-        << "s." << std::endl;
-    std::clog << "Movie time: " << max_time_step/60.f << "s." << std::endl;
+    std::clog << "Ray-tracing time: " << duration_cast<seconds>(total_time).count()
+           << "s" << std::endl;
+       std::clog << "Movie time: " << max_time_step/60.f << "s" << std::endl;
 }
 
 const std::string kernelsmykernels = R"(
@@ -248,8 +245,7 @@ float3 random_in_unit_sphere(global float* distribution, int distr_size, int see
 
     float3 randvec = (float3)(0.f, 0.f, 0.f);
     float eta = 2.f*(M_PI)*distribution[(seed_l) % distr_size];
-    // idk why, but acos is weird
-    float phi = (distribution[(seed_l+1) % distr_size] - distribution[(seed_l+2) % distr_size])*(M_PI_2); //acos(2.f*distribution[(seed_l+1) % distr_size] - 1.f) - (pi/2.f);
+    float phi = (distribution[(seed_l+1) % distr_size] - distribution[(seed_l+2) % distr_size])*(M_PI_2);
 
     randvec.x =  cos(eta)*cos(eta);
     randvec.y = cos(phi)*sin(eta);
@@ -308,31 +304,23 @@ float3 trace(Ray r, int objects_num, global float* objects, global float* distr,
             r.origin = hit.point;
             r.direction = hit.normal;
             float3 rnd = random_in_unit_sphere(distr, distr_size, 100*depth + 10*ray_num);
-            //rnd = normalize(rnd);
             r.direction += rnd; // scatter
-            //r.direction = normalize(r.direction);
             factor *= 0.5f; // diffuse 50% of light, scatter the remaining
         } else {
             break;
         }
     }
-    //if (depth == max_depth) { return vec{}; }
-    // nothing was hit
-    // represent sky as linear gradient in Y dimension
     r.direction /= length(r.direction);
     float t = 0.5f*(r.direction.y + 1.0f);
     return factor*((1.0f-t)*(float3)(1.0f, 1.0f, 1.0f) + t*(float3)(0.5f, 0.7f, 1.0f));
 }
 
-kernel void ray_trace(
-                                global float3* camera_origin,
+kernel void ray_trace(global float3* camera_origin,
                                 global float3* camera_ll_corner,
                                 global float3* camera_horizontal,
                                 global float3* camera_vertical,
-
                                 global float* objects,
                                 int objects_num,
-
                                 global float* distribution,
                                 int distr_size,
                                 global float* result,
@@ -340,16 +328,11 @@ kernel void ray_trace(
 
         const int y = get_global_id(0);
         const int x = get_global_id(1);
-
         const int i = y*nx + x;
-
-
         float3 camera_origin_p = camera_origin[0];
         float3 camera_ll_corner_p = camera_ll_corner[0];
         float3 camera_horizontal_p = camera_horizontal[0];
         float3 camera_vertical_p = camera_vertical[0];
-
-        
         float3 sum = (float3)(0.f, 0.f, 0.f);
         for (int k=0; k<nrays; ++k) {
             float u = (float)(x + distribution[(2*(i+k) + x + nrays)%distr_size]) / nx;
@@ -359,7 +342,6 @@ kernel void ray_trace(
         }
         sum /= (float)(nrays); // antialiasing
         sum = pow(sum,1.f/gamma); // gamma correction
-
         result[3 * i + 0] = sum.x;
         result[3 * i + 1] = sum.y;
         result[3 * i + 2] = sum.z;
