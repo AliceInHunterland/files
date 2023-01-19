@@ -136,7 +136,7 @@ void ray_tracing_gpu(OpenCL& opencl) {
     const int max_time_step = 60;
     print_column_names("OpenCL");
 
-    float camera_origin[4] = {13.f,2.f,3.f, 0};
+    float camera_origin[4] = {10.f,2.f,3.f, 0};
     float camera_move_direction[4] = {0.f,0.f,0.1f, 0};
     float camera_ll_corner[4] = {3.02374f,-1.22628f,3.4122f, 0};
     float camera_horizontal[4] = {1.18946f,0.f,-5.15434f, 0};
@@ -189,7 +189,7 @@ void ray_tracing_gpu(OpenCL& opencl) {
     kernel.setArg(11, nrays);
     kernel.setArg(12, gamma);
 
-    opencl.queue.flush(); 
+    opencl.queue.flush();
 
     duration total_time = duration::zero();
     for (int time_step=1; time_step<=max_time_step; ++time_step) {
@@ -224,10 +224,10 @@ void ray_tracing_gpu(OpenCL& opencl) {
 
 const std::string kernelsmykernels = R"(
 struct Ray
-	{
-	float3 origin;
+    {
+    float3 origin;
     float3 direction;
-	};
+    };
 typedef struct Ray Ray;
 
 struct Hit {
@@ -249,7 +249,7 @@ float3 random_in_unit_sphere(global float* distribution, int distr_size, int see
     float3 randvec = (float3)(0.f, 0.f, 0.f);
     float eta = 2.f*(M_PI)*distribution[(seed_l) % distr_size];
     // idk why, but acos is weird
-    float phi = (distribution[(seed_l+1) % distr_size] - distribution[(seed_l+2) % distr_size])*(M_PI_2); //acos(2.f*distribution[(seed_l+1) % distr_size] - 1.f) - (pi/2.f); 
+    float phi = (distribution[(seed_l+1) % distr_size] - distribution[(seed_l+2) % distr_size])*(M_PI_2); //acos(2.f*distribution[(seed_l+1) % distr_size] - 1.f) - (pi/2.f);
 
     randvec.x =  cos(eta)*cos(eta);
     randvec.y = cos(phi)*sin(eta);
@@ -306,8 +306,8 @@ float3 trace(Ray r, int objects_num, global float* objects, global float* distr,
         Hit hit = get_hit(r, 1e-3f, FLT_MAX, objects_num, objects);
         if (hit.t > 1e-3f) {
             r.origin = hit.point;
-            r.direction = hit.normal; 
-            float3 rnd = random_in_unit_sphere(distr, distr_size, 100*depth + 10*ray_num); 
+            r.direction = hit.normal;
+            float3 rnd = random_in_unit_sphere(distr, distr_size, 100*depth + 10*ray_num);
             //rnd = normalize(rnd);
             r.direction += rnd; // scatter
             //r.direction = normalize(r.direction);
